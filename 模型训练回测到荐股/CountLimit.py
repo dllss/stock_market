@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 import os
 base_path = 'stock'
-base_path = os.path.join(base_path, 'OhterData')
+base_path = os.path.join(base_path, 'OtherData')
 
 def mysplit(x):
     x = x.split('.')[0]

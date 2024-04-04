@@ -131,7 +131,7 @@ def main(startdate, enddate, save_path1, save_path2):
     feature_col.append('vol')
     
     
-    #转换low colse等
+    #转换low close等
     col = ['open', 'high', 'low', 'high', 'close']
     for tmp_col in col:
         stock_info[tmp_col+'_transform'] = (stock_info[tmp_col] - stock_info['ma21']) / stock_info['ma21']

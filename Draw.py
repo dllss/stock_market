@@ -35,11 +35,11 @@ def Draw_Stock(stock_id, stock_info, buy_day, sell_date=None, left_offset=5, rig
     :param right_offset: 绘图右偏天数，用于调整可见天数
     :return:
     """
-    fig, ax = plt.subplots(1, 1, figsize=(8,3))
+    fig, ax = plt.subplots(1, 1, figsize=(8, 3))
     idx = (stock_info['trade_date'] == buy_day) & (stock_info['ts_code'] == stock_id)
     ts_date_id = stock_info[idx]['ts_date_id'].values[0]
-    idx = (stock_info['ts_date_id'] <= ts_date_id + right_offset) & (
-                stock_info['ts_date_id'] >= ts_date_id - left_offset)
+    idx = (stock_info['ts_date_id'] <= ts_date_id + right_offset) & (stock_info['ts_date_id'] >=
+                                                                     ts_date_id - left_offset)
     tmp_df = stock_info[idx].sort_values('trade_date').reset_index()
     x = list(range(len(tmp_df)))
     tmp_df['index'] = x
@@ -50,11 +50,12 @@ def Draw_Stock(stock_id, stock_info, buy_day, sell_date=None, left_offset=5, rig
     data = tmp_df[['index', 'open', 'close', 'high', 'low']].values
     candlestick_ochl(ax, data, width=0.1, colorup='r', colordown='g')
     # plt.arrow(x_loc, y_loc*1.5, x_loc, y_loc, length_includes_head=True, head_width=0.25, head_length=0.5, fc='r', ec='b')
-    plt.annotate("buy",
-                xy=(x_loc, y_loc*1.001),
-                xytext=(x_loc, y_loc * 1.06),
-                # xycoords="figure points",
-                arrowprops=dict(arrowstyle="->", color="b"))
+    plt.annotate(
+        "buy",
+        xy=(x_loc, y_loc * 1.001),
+        xytext=(x_loc, y_loc * 1.06),
+        # xycoords="figure points",
+        arrowprops=dict(arrowstyle="->", color="b"))
     # plt.plot(x_loc, y_loc * 1.03, '*')
     title = tmp_df['name'][0]
     plt.rcParams['font.sans-serif'] = ['SimHei']
@@ -66,8 +67,9 @@ def Draw_Stock(stock_id, stock_info, buy_day, sell_date=None, left_offset=5, rig
         idx = (tmp_df['trade_date'] == sell_date)
         x_loc = tmp_df[idx]['index'].values[0]
         y_loc = tmp_df[idx]['high'].values[0]
-        plt.annotate("sell",
-                     xy=(x_loc, y_loc * 1.001),
-                     xytext=(x_loc, y_loc * 1.06),
-                     # xycoords="figure points",
-                     arrowprops=dict(arrowstyle="->", color="r"))
+        plt.annotate(
+            "sell",
+            xy=(x_loc, y_loc * 1.001),
+            xytext=(x_loc, y_loc * 1.06),
+            # xycoords="figure points",
+            arrowprops=dict(arrowstyle="->", color="r"))

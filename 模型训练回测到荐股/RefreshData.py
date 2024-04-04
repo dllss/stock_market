@@ -119,7 +119,7 @@ def update_up_down(days):
     for tmp_day in tqdm(days):
         j = j + 1
         df = pro.limit_list(trade_date=str(tmp_day))
-        path = os.path.join(save_path, 'OhterData', 'limit_list_' + str(tmp_day) + '.csv')
+        path = os.path.join(save_path, 'OtherData', 'limit_list_' + str(tmp_day) + '.csv')
         time.sleep(0.601)
         if len(df) == 0:
             continue

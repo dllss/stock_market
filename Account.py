@@ -1,9 +1,15 @@
 import numpy as np
 import pandas as pd
 
+
 class Account:
 
-    def __init__(self, money_init, start_date='', end_date='', stop_loss_rate=-0.03, stop_profit_rate=0.05,
+    def __init__(self,
+                 money_init,
+                 start_date='',
+                 end_date='',
+                 stop_loss_rate=-0.03,
+                 stop_profit_rate=0.05,
                  max_hold_period=5):
         self.cash = money_init  # 现金
         self.stock_value = 0  # 股票价值
@@ -38,63 +44,56 @@ class Account:
         self.stock_value_all = [0.0]  # 记录每天收盘后所持股票的市值
         self.market_value_all = [money_init]  # 记录每天收盘后的总市值
         self.max_market_value = money_init  # 记录最大的市值情况，用来计算回撤
-        self.min_after_max_makret_value = money_init  # 记录最大市值后的最小市值
+        self.min_after_max_market_value = money_init  # 记录最大市值后的最小市值
         self.max_retracement = 0  #记录最大回撤率
-        self.info = pd.DataFrame(columns=['ts_code', 'name', 'buy_price', 'buy_date', 'buy_num', 'sell_price', 'sell_date',
-                                          'profit'])
+        self.info = pd.DataFrame(
+            columns=['ts_code', 'name', 'buy_price', 'buy_date', 'buy_num', 'sell_price', 'sell_date', 'profit'])
 
     # 股票买入
-    def buy_stock(self, buy_date, stock_name, stock_id, stock_price, buy_num):
+    def buy_stock(self, stock_id, stock_name, buy_date, stock_price, buy_num):
         """
-        :param buy_date: 买入日期
-        :param stock_name: 买入股票的名字
         :param stock_id: 买入股票的id
-        :param stcok_price: 买入股票的价格
+        :param stock_name: 买入股票的名字
+        :param buy_date: 买入日期
+        :param stock_price: 买入股票的价格
         :param buy_num: 买入股票的数量
         :return:
         """
+        if stock_id in self.stock_id:
+            return
+        self.stock_id.append(stock_id)
+        self.stock_name.append(stock_name)
+        self.buy_date.append(buy_date)
+        self.stock_price.append(stock_price)
+        self.hold_day.append(1)
         tmp_len = len(self.info)
-        if stock_id not in self.stock_id:
-            self.stock_id.append(stock_id)
-            self.stock_name.append(stock_name)
-            self.buy_date.append(buy_date)
-            self.stock_price.append(stock_price)
-            self.hold_day.append(1)
-
-            self.info.loc[tmp_len, 'ts_code'] = stock_id
-            self.info.loc[tmp_len, 'name'] = stock_name
-            self.info.loc[tmp_len, 'buy_price'] = stock_price
-            self.info.loc[tmp_len, 'buy_date'] = buy_date
-
-
-            # 更新市值、现金及股票价值
+        self.info.loc[tmp_len, 'ts_code'] = stock_id
+        self.info.loc[tmp_len, 'name'] = stock_name
+        self.info.loc[tmp_len, 'buy_price'] = stock_price
+        self.info.loc[tmp_len, 'buy_date'] = buy_date
+        tmp_money = stock_price * buy_num
+        service_change = tmp_money * self.buy_rate
+        if service_change < self.buy_min:
+            service_change = self.buy_min
+        self.cash = self.cash - tmp_money - service_change
+        # 买入数量（buy_num）是我们预估的，可能会造成买入之后所剩现金无法付满手续，因此有以下代码
+        if self.cash < 0:
+            buy_num = buy_num - 100
             tmp_money = stock_price * buy_num
             service_change = tmp_money * self.buy_rate
             if service_change < self.buy_min:
                 service_change = self.buy_min
             self.cash = self.cash - tmp_money - service_change
-            if self.cash < 0:
-                buy_num = buy_num - 100
-                tmp_money = stock_price * buy_num
-                service_change = tmp_money * self.buy_rate
-                if service_change < self.buy_min:
-                    service_change = self.buy_min
-                self.cash = self.cash - tmp_money - service_change
+        self.info.loc[tmp_len, 'buy_num'] = buy_num
+        self.stock_num.append(buy_num)
+        self.cost.append(tmp_money + service_change)
+        info = (((((f'{str(buy_date)}  买入 ' + stock_name + ' (' + stock_id + ') ' + str(int(buy_num))) + '股，股价：') +
+                  str(stock_price) + ',花费：') + str(round(tmp_money, 2)) + ',手续费：') + str(round(service_change, 2)) +
+                '，剩余现金：') + str(round(self.cash, 2))
 
-            self.info.loc[tmp_len, 'buy_num'] = buy_num
-            self.stock_num.append(buy_num)
+        print(info)
 
-            # self.stock_value = self.stock_value + tmp_money
-            # self.market_value = self.cash + self.stock_value
-
-            self.cost.append(tmp_money + service_change)
-
-            info = str(buy_date) + '  买入 ' + stock_name + ' (' + stock_id + ') ' \
-                   + str(int(buy_num)) + '股，股价：'+str(stock_price)+',花费：' + str(round(tmp_money, 2)) + ',手续费：' \
-                   + str(round(service_change, 2)) + '，剩余现金：' + str(round(self.cash, 2))
-            print(info)
-
-            # self.info.append(info)
+        # self.info.append(info)
 
     def sell_stock(self, sell_date, stock_name, stock_id, sell_price, sell_num, flag):
         """
@@ -108,8 +107,9 @@ class Account:
 
         if stock_id not in self.stock_id:
             raise TypeError('该股票未买入')
+        # 首先找到需要卖出的股票在持仓股票中的索引
         idx = self.stock_id.index(stock_id)
-
+        # 然后更新现金：（需要计算印花税、卖出费率等）
         tmp_money = sell_num * sell_price
         service_change = tmp_money * self.sell_rate
         if service_change < self.sell_min:
@@ -122,7 +122,8 @@ class Account:
 
         service_change = stamp_duty + service_change
         # self.profit.append(tmp_money-service_change)
-        profit = tmp_money-service_change - self.cost[idx]
+        profit = tmp_money - service_change - self.cost[idx]
+        # 更新其他一些信息
         if self.stock_num[idx] == sell_num:
             # 全部卖出
             del self.stock_num[idx]
@@ -170,7 +171,7 @@ class Account:
     def buy_trigger(self):
         pass
 
-    # 判断是否达到卖出条件
+    # 卖出触发器：判断是否达到卖出条件
     def sell_trigger(self, stock_id, day, all_df, index_df):
         """
         :param stock_id: 股票id
@@ -181,6 +182,7 @@ class Account:
                   卖出价格；若不卖出，后面两个值无意义
         """
         # print(day, stock_id)
+        # 首先根据日期和股票id获取股票当天一些信息
         # 可能会有一些停牌企业，后期再改
         idx = (all_df['trade_date'] == day) & (all_df['ts_code'] == stock_id)
         # print(all_df[idx]['low'])
@@ -188,14 +190,15 @@ class Account:
         high = all_df[idx]['high'].values[0]
         open = all_df[idx]['open'].values[0]
         close = all_df[idx]['close'].values[0]
-
+        # 找到该股在持仓股票的id
         idx = self.stock_id.index(stock_id)
+        # 判断开盘价是否到止盈或止损点
         tmp_rate = (open - self.stock_price[idx]) / self.stock_price[idx]
         if tmp_rate <= self.stop_loss_rate:  # 止损卖出，开盘价卖出
             return True, 2, open
         elif tmp_rate >= self.stop_profit_rate:  # 止盈卖出，开盘价卖出
             return True, 1, open
-
+        # 如果没有，则先判断当日最低是否到止损点，再判断当日最高是否到止盈点（这里优先考虑差的情况，实际可能先到止盈点再到止损点）。
         # 这里有点bug，先判断最低吧，优先出现最差的可能
         tmp_rate = (low - self.stock_price[idx]) / self.stock_price[idx]
         if tmp_rate <= self.stop_loss_rate:  # 止损卖出，止损价卖出
@@ -208,7 +211,7 @@ class Account:
             sell_price = self.stock_price[idx] * (1 + self.stop_profit_rate)
             return True, 1, sell_price
 
-        # 判断持股周期是否达到上限
+        # 判断持股周期是否达到上限（这里我们追求短线炒股，所以最大持股时间设置为5天）
         hold_day = self.hold_day[idx]
         if hold_day >= self.max_hold_period:  # 收盘价卖出
             return True, 0, close
@@ -216,7 +219,9 @@ class Account:
         return False, 3, 0
 
     # 更新信息
+    # 需要一个更新当日股票的市值及总市值的一个操作
     def update(self, day, all_df):
+        # 得到持仓股票的收盘价
         stock_price = []
         for j in range(len(self.stock_id)):
             self.hold_day[j] = self.hold_day[j] + 1  # 更新持股时间
@@ -233,31 +238,36 @@ class Account:
         self.stock_value_all.append(self.stock_value)
         self.cash_all.append(self.cash)
 
+        # 更新最大回撤等信息
         if self.max_market_value < self.market_value:
             self.max_market_value = self.market_value
-            self.min_after_max_makret_value = 99999999999
-        else:
-            if self.min_after_max_makret_value > self.market_value:
-                self.min_after_max_makret_value = self.market_value
-                #  计算回撤率
-                retracement = np.abs((self.max_market_value - self.min_after_max_makret_value) / self.max_market_value)
-                if retracement > self.max_retracement:
-                    self.max_retracement = retracement
+            self.min_after_max_market_value = 99999999999
+        elif self.min_after_max_market_value > self.market_value:
+            self.min_after_max_market_value = self.market_value
+            #  计算回撤率
+            retracement = np.abs((self.max_market_value - self.min_after_max_market_value) / self.max_market_value)
+            if retracement > self.max_retracement:
+                self.max_retracement = retracement
 
+    # 回测系统：
+    # 就是输入每日可买入的股票（这些股票是经过模型筛选得到的），然后回测系统根据一些条件买入卖出等操作。
     def BackTest(self, buy_df, all_df, index_df, buy_price='close'):
         """
-        :param buy_df: 可以买入的股票，输入为DataFrame
+        :param buy_df: buy_df为我们模型筛选后每日可买入的股票，输入为DataFrame
         :param all_df: 所有股票的DataFrame
         :param index_df: 指数对应时间的df
         :return:
         """
+        # 先按时间顺序排列，然后遍历选择股票
         day_info = np.sort(index_df['trade_date'])
         for i in range(len(day_info)):
+            # 买股票，这里我们假设对于每支股票，我们利用当前总市值的20%的现金去购买，如果现金小于5000就不买了。
             day = day_info[i]
             tmp_idx = buy_df['trade_date'] == day
-            # tmp_df = buy_df.loc[tmp_idx].reset_index()
-            tmp_df = buy_df.loc[tmp_idx].sort_values('label_prob', ascending=False).reset_index()
+            tmp_df = buy_df.loc[tmp_idx].reset_index()
+            # tmp_df = buy_df.loc[tmp_idx].sort_values('label_prob', ascending=False).reset_index()
 
+            # 然后判断持仓股票是否达到卖出要求，若达到则卖出，否则继续持有
             # 先买后卖吧
             # ----买股
             if len(tmp_df) != 0:
@@ -275,8 +285,7 @@ class Account:
                     if buy_num == 0:
                         continue
                     buy_num = buy_num * 100
-                    self.buy_stock(day, tmp_df['name'][j],
-                                   tmp_df['ts_code'][j], tmp_df[buy_price][j], buy_num)
+                    self.buy_stock(day, tmp_df['name'][j], tmp_df['ts_code'][j], tmp_df[buy_price][j], buy_num)
 
             # ----卖股
             # import datetime
@@ -301,6 +310,7 @@ class Account:
         # self.info['sell_date'] = self.info['sell_date'].apply(lambda x: int(x))
         # self.info['buy_num'] = self.info['buy_num'].apply(lambda x: int(x))
         try:
-            self.info[['buy_date', 'sell_date', 'buy_num']] = self.info[['buy_date', 'sell_date', 'buy_num']].astype(int)
-        except:
+            self.info[['buy_date', 'sell_date', 'buy_num']] = self.info[['buy_date', 'sell_date',
+                                                                         'buy_num']].astype(int)
+        except Exception:
             pass

@@ -7,22 +7,21 @@ import numpy as np
 import pandas as pd
 import os
 import tqdm
-
+from GlobalVariable import encoding_type, base_path
 
 max_hold_day = 20  # 最大持股周期
 min_profit_rate = 0.12  # 设置未来20天最小盈利点
 loss_limit = -0.07 + 0.01  # 设置未来20天的止损点，如果我们止损点是7个点，标数据的时候超过6个点就标记为0
 
-base_path = 'stock'
 save_base_path = os.path.join(base_path, 'label')
-company_info = pd.read_csv(os.path.join(base_path, 'company_info.csv'), encoding='ANSI')
+company_info = pd.read_csv(os.path.join(base_path, 'company_info.csv'), encoding=encoding_type)
 # 丢弃一些多余的信息
 company_info.drop(['index', 'symbol', 'fullname'], axis=1, inplace=True)
 company_info.dropna(inplace=True)
 
 # 读取指数信息
 stock_index_info = pd.DataFrame()
-tmp_df = pd.read_csv(os.path.join(base_path,  'OldData', '000001.SH_NormalData.csv'))
+tmp_df = pd.read_csv(os.path.join(base_path, 'OldData', '000001.SH_NormalData.csv'))
 tmp_list = list(tmp_df['trade_date'].sort_values())
 date_map = dict(zip(tmp_list, range(len(tmp_list))))
 
@@ -37,7 +36,7 @@ for ts_code in tqdm.tqdm(company_info['ts_code']):
         continue
         pass
     # 还需要去除一些停牌时间很久的企业，后期加
-    if len(tmp_df) < 100:  # 去除一些上市不久的企业
+    if len(tmp_df) < 50:  # 去除一些上市不久的企业
         remove_stock.append(ts_code)
         continue
     tmp_df = tmp_df.sort_values('trade_date', ascending=True).reset_index(drop=True)
@@ -48,7 +47,6 @@ stock_info = pd.concat(tmp_list)
 stock_info = stock_info.reset_index(drop=True)
 
 ts_code_map = dict(zip(list(company_info['ts_code']), range(len(company_info))))
-
 
 stock_info = stock_info.reset_index(drop=True)
 stock_info['ts_code_id'] = stock_info['ts_code'].map(ts_code_map)
@@ -62,11 +60,11 @@ stock_info = stock_info[['ts_code', 'trade_date', 'ts_date_id', 'high', 'low', '
 use_col = []
 
 for i in range(max_hold_day):
-    print('begin shift %d days' % (i+1))
+    print('begin shift %d days' % (i + 1))
     tmp_df = stock_info[['ts_date_id', 'high', 'low']]
-    tmp_df = tmp_df.rename(columns={'high':'high_shift_{}'.format(i+1), 'low':'low_shift_{}'.format(i+1)})
-    use_col.append('high_shift_{}'.format(i+1))
-    use_col.append('low_shift_{}'.format(i+1))
+    tmp_df = tmp_df.rename(columns={'high': 'high_shift_{}'.format(i + 1), 'low': 'low_shift_{}'.format(i + 1)})
+    use_col.append('high_shift_{}'.format(i + 1))
+    use_col.append('low_shift_{}'.format(i + 1))
     tmp_df['ts_date_id'] = tmp_df['ts_date_id'] - i - 1
     stock_info = stock_info.merge(tmp_df, how='left', on='ts_date_id')
 
@@ -74,9 +72,10 @@ stock_info.dropna(inplace=True)
 
 # 假设以当天开盘价买入
 for i in range(max_hold_day):
-    stock_info['high_shift_{}'.format(i+1)] = (stock_info['high_shift_{}'.format(i+1)] - stock_info['open']) / stock_info['open']
-    stock_info['low_shift_{}'.format(i+1)] = (stock_info['low_shift_{}'.format(i+1)] - stock_info['open']) / stock_info['open']
-
+    stock_info['high_shift_{}'.format(i + 1)] = (stock_info['high_shift_{}'.format(i + 1)] -
+                                                 stock_info['open']) / stock_info['open']
+    stock_info['low_shift_{}'.format(i + 1)] = (stock_info['low_shift_{}'.format(i + 1)] -
+                                                stock_info['open']) / stock_info['open']
 
 tmp_array = stock_info[use_col].values
 
@@ -115,5 +114,3 @@ if not os.path.exists(save_base_path):
 save_path = os.path.join(save_base_path, 'label.csv')
 print('begin save :' + save_path)
 stock_info[['ts_code', 'open', 'trade_date', 'ts_date_id', 'label_final']].to_csv(save_path, index=None)
-
-

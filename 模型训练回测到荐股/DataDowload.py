@@ -122,7 +122,7 @@ def getOtherData():
         # if j < 1190:
         #     continue
         df = pro.limit_list(trade_date=str(tmp_day))
-        path = os.path.join(save_path, 'OhterData', 'limit_list_' + str(tmp_day) + '.csv')
+        path = os.path.join(save_path, 'OtherData', 'limit_list_' + str(tmp_day) + '.csv')
         time.sleep(0.601)
         if len(df) == 0:
             continue
@@ -141,7 +141,7 @@ def getOtherData():
         df = pro.moneyflow_hsgt(start_date=sd, end_date=ed)
         time.sleep(0.5)
         df_all = pd.concat((df_all, df))
-    path = os.path.join(save_path, 'OhterData', 'moneyflow_hsgt' + '.csv')
+    path = os.path.join(save_path, 'OtherData', 'moneyflow_hsgt' + '.csv')
     df_all.to_csv(path, index=False)
 
     # 港股通每日成交， 暂时没用到
@@ -156,7 +156,7 @@ def getOtherData():
         df = pro.ggt_daily(start_date=sd, end_date=ed)
         time.sleep(60)
         df_all = pd.concat((df_all, df))
-    path = os.path.join(save_path, 'OhterData', 'ggt_daily' + '.csv')
+    path = os.path.join(save_path, 'OtherData', 'ggt_daily' + '.csv')
     df_all.to_csv(path, index=False)
 
     # 港股通每月成交
@@ -170,7 +170,7 @@ def getOtherData():
     #         ed = day[i+skip-1]
     #     df = pro.ggt_daily(start_date=sd, end_date=ed)
     #     df_all = pd.concat((df_all, df))
-    # path = os.path.join(save_path, 'OhterData', 'ggt_monthly' + '.csv')
+    # path = os.path.join(save_path, 'OtherData', 'ggt_monthly' + '.csv')
     # df_all.to_csv(path, index=False)
 
     # 沪深股通持股明细
@@ -212,7 +212,7 @@ if __name__ == '__main__':
         os.mkdir('stock/features_update')
         os.mkdir('stock/label')
         os.mkdir('stock/LimitData')
-        os.mkdir('stock/OhterData')
+        os.mkdir('stock/OtherData')
         os.mkdir('stock/OldData')
     #主程序 1789
     getNoramlData()
