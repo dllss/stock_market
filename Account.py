@@ -87,7 +87,7 @@ class Account:
         self.info.loc[tmp_len, 'buy_num'] = buy_num
         self.stock_num.append(buy_num)
         self.cost.append(tmp_money + service_change)
-        info = (((((f'{str(buy_date)}  买入 ' + stock_name + ' (' + stock_id + ') ' + str(int(buy_num))) + '股，股价：') +
+        info = (((((f'{str(buy_date)}  买入 ' + stock_name + ' (' + str(stock_id) + ') ' + str(int(buy_num))) + '股，股价：') +
                   str(stock_price) + ',花费：') + str(round(tmp_money, 2)) + ',手续费：') + str(round(service_change, 2)) +
                 '，剩余现金：') + str(round(self.cash, 2))
 
@@ -186,38 +186,41 @@ class Account:
         # 可能会有一些停牌企业，后期再改
         idx = (all_df['trade_date'] == day) & (all_df['ts_code'] == stock_id)
         # print(all_df[idx]['low'])
-        low = all_df[idx]['low'].values[0]
-        high = all_df[idx]['high'].values[0]
-        open = all_df[idx]['open'].values[0]
-        close = all_df[idx]['close'].values[0]
-        # 找到该股在持仓股票的id
-        idx = self.stock_id.index(stock_id)
-        # 判断开盘价是否到止盈或止损点
-        tmp_rate = (open - self.stock_price[idx]) / self.stock_price[idx]
-        if tmp_rate <= self.stop_loss_rate:  # 止损卖出，开盘价卖出
-            return True, 2, open
-        elif tmp_rate >= self.stop_profit_rate:  # 止盈卖出，开盘价卖出
-            return True, 1, open
-        # 如果没有，则先判断当日最低是否到止损点，再判断当日最高是否到止盈点（这里优先考虑差的情况，实际可能先到止盈点再到止损点）。
-        # 这里有点bug，先判断最低吧，优先出现最差的可能
-        tmp_rate = (low - self.stock_price[idx]) / self.stock_price[idx]
-        if tmp_rate <= self.stop_loss_rate:  # 止损卖出，止损价卖出
-            # 假设都止损价不能马上卖出，多损失 0.01%
-            sell_price = self.stock_price[idx] * (1 + self.stop_loss_rate - 0.01)
-            return True, 2, sell_price
+        try:
+            low = all_df[idx]['low'].values[0]
+            high = all_df[idx]['high'].values[0]
+            open = all_df[idx]['open'].values[0]
+            close = all_df[idx]['close'].values[0]
+            # 找到该股在持仓股票的id
+            idx = self.stock_id.index(stock_id)
+            # 判断开盘价是否到止盈或止损点
+            tmp_rate = (open - self.stock_price[idx]) / self.stock_price[idx]
+            if tmp_rate <= self.stop_loss_rate:  # 止损卖出，开盘价卖出
+                return True, 2, open
+            elif tmp_rate >= self.stop_profit_rate:  # 止盈卖出，开盘价卖出
+                return True, 1, open
+            # 如果没有，则先判断当日最低是否到止损点，再判断当日最高是否到止盈点（这里优先考虑差的情况，实际可能先到止盈点再到止损点）。
+            # 这里有点bug，先判断最低吧，优先出现最差的可能
+            tmp_rate = (low - self.stock_price[idx]) / self.stock_price[idx]
+            if tmp_rate <= self.stop_loss_rate:  # 止损卖出，止损价卖出
+                # 假设都止损价不能马上卖出，多损失 0.01%
+                sell_price = self.stock_price[idx] * (1 + self.stop_loss_rate - 0.01)
+                return True, 2, sell_price
 
-        tmp_rate = (high - self.stock_price[idx]) / self.stock_price[idx]
-        if tmp_rate >= self.stop_profit_rate:  # 止盈卖出，止盈价卖出
-            sell_price = self.stock_price[idx] * (1 + self.stop_profit_rate)
-            return True, 1, sell_price
+            tmp_rate = (high - self.stock_price[idx]) / self.stock_price[idx]
+            if tmp_rate >= self.stop_profit_rate:  # 止盈卖出，止盈价卖出
+                sell_price = self.stock_price[idx] * (1 + self.stop_profit_rate)
+                return True, 1, sell_price
 
-        # 判断持股周期是否达到上限（这里我们追求短线炒股，所以最大持股时间设置为5天）
-        hold_day = self.hold_day[idx]
-        if hold_day >= self.max_hold_period:  # 收盘价卖出
-            return True, 0, close
+            # 判断持股周期是否达到上限（这里我们追求短线炒股，所以最大持股时间设置为5天）
+            hold_day = self.hold_day[idx]
+            if hold_day >= self.max_hold_period:  # 收盘价卖出
+                return True, 0, close
 
-        return False, 3, 0
-
+            return False, 3, 0
+        except Exception:
+            print('sell_trigger Exception: ', Exception)
+            return False, 3, 0
     # 更新信息
     # 需要一个更新当日股票的市值及总市值的一个操作
     def update(self, day, all_df):
@@ -285,7 +288,7 @@ class Account:
                     if buy_num == 0:
                         continue
                     buy_num = buy_num * 100
-                    self.buy_stock(day, tmp_df['name'][j], tmp_df['ts_code'][j], tmp_df[buy_price][j], buy_num)
+                    self.buy_stock(tmp_df['ts_code'][j], tmp_df['name'][j], day, tmp_df[buy_price][j], buy_num)
 
             # ----卖股
             # import datetime
@@ -302,7 +305,11 @@ class Account:
                     self.sell_stock(day, stock_name, stock_id, sell_price, sell_num, sell_kind)
 
             # 更新持股周期及信息
-            self.update(day, all_df)
+            # try:
+                self.update(day, all_df)
+            # except Exception:
+            #     print('BackTest error', Exception)
+            #     pass
             # end = datetime.datetime.now()
             # print('running time:%s'%(end-start))
 
