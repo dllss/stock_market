@@ -20,7 +20,7 @@ def Draw_Market_Value_Change(day, market_value, index_value=None):
     if index_value is not None:
         index_value = np.array(index_value) / index_value[0]
         plt.plot(x, index_value, label='The index')
-    plt.xlabel("Date")
+    plt.xlabel("Day")
     plt.legend()
     plt.show()
 
@@ -50,6 +50,7 @@ def Draw_Stock(stock_id, stock_info, buy_day, sell_date=None, left_offset=5, rig
     data = tmp_df[['index', 'open', 'close', 'high', 'low']].values
     candlestick_ochl(ax, data, width=0.1, colorup='r', colordown='g')
     # plt.arrow(x_loc, y_loc*1.5, x_loc, y_loc, length_includes_head=True, head_width=0.25, head_length=0.5, fc='r', ec='b')
+    # 添加箭头注释 buy
     plt.annotate(
         "buy",
         xy=(x_loc, y_loc * 1.001),
@@ -67,6 +68,7 @@ def Draw_Stock(stock_id, stock_info, buy_day, sell_date=None, left_offset=5, rig
         idx = (tmp_df['trade_date'] == sell_date)
         x_loc = tmp_df[idx]['index'].values[0]
         y_loc = tmp_df[idx]['high'].values[0]
+        # 添加箭头注释 sell
         plt.annotate(
             "sell",
             xy=(x_loc, y_loc * 1.001),

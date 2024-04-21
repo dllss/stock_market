@@ -67,31 +67,36 @@ class Account:
         self.stock_price.append(stock_price)
         self.hold_day.append(1)
         tmp_len = len(self.info)
-        self.info.loc[tmp_len, 'ts_code'] = stock_id
-        self.info.loc[tmp_len, 'name'] = stock_name
-        self.info.loc[tmp_len, 'buy_price'] = stock_price
-        self.info.loc[tmp_len, 'buy_date'] = buy_date
-        tmp_money = stock_price * buy_num
-        service_change = tmp_money * self.buy_rate
-        if service_change < self.buy_min:
-            service_change = self.buy_min
-        self.cash = self.cash - tmp_money - service_change
-        # 买入数量（buy_num）是我们预估的，可能会造成买入之后所剩现金无法付满手续，因此有以下代码
-        if self.cash < 0:
-            buy_num = buy_num - 100
+        if stock_id not in self.stock_id:
+            self.stock_id.append(stock_id)
+            self.stock_name.append(stock_name)
+            self.buy_date.append(buy_date)
+            self.stock_price.append(stock_price)
+            self.hold_day.append(1)
+
+            self.info.loc[tmp_len, 'ts_code'] = stock_id
+            self.info.loc[tmp_len, 'name'] = stock_name
+            self.info.loc[tmp_len, 'buy_price'] = stock_price
+            self.info.loc[tmp_len, 'buy_date'] = buy_date
+
+            if str(buy_date) == '20190813':
+                print('go')
+            # 更新市值、现金及股票价值
             tmp_money = stock_price * buy_num
             service_change = tmp_money * self.buy_rate
             if service_change < self.buy_min:
                 service_change = self.buy_min
-            self.cash = self.cash - tmp_money - service_change
-        self.info.loc[tmp_len, 'buy_num'] = buy_num
-        self.stock_num.append(buy_num)
-        self.cost.append(tmp_money + service_change)
-        info = (((((f'{str(buy_date)}  买入 ' + stock_name + ' (' + str(stock_id) + ') ' + str(int(buy_num))) + '股，股价：') +
-                  str(stock_price) + ',花费：') + str(round(tmp_money, 2)) + ',手续费：') + str(round(service_change, 2)) +
-                '，剩余现金：') + str(round(self.cash, 2))
-
-        print(info)
+            cash_change = tmp_money + service_change
+            if cash_change > self.cash:
+                buy_num = buy_num - 100
+                tmp_money = stock_price * buy_num
+                service_change = tmp_money * self.buy_rate
+                if service_change < self.buy_min:
+                    service_change = self.buy_min
+                cash_change = tmp_money - service_change
+            self.cash = self.cash - cash_change
+            self.info.loc[tmp_len, 'buy_num'] = buy_num
+            self.stock_num.append(buy_num)
 
         # self.info.append(info)
 
@@ -182,7 +187,7 @@ class Account:
                   卖出价格；若不卖出，后面两个值无意义
         """
         # print(day, stock_id)
-        # 首先根据日期和股票id获取股票当天一些信息
+        # 首先根据日期和股票id定位到特定的股票当天一些信息
         # 可能会有一些停牌企业，后期再改
         idx = (all_df['trade_date'] == day) & (all_df['ts_code'] == stock_id)
         # print(all_df[idx]['low'])
@@ -251,7 +256,8 @@ class Account:
             retracement = np.abs((self.max_market_value - self.min_after_max_market_value) / self.max_market_value)
             if retracement > self.max_retracement:
                 self.max_retracement = retracement
-
+        info = '结算日: ' + str(day) + ' 总市值: ' + str(self.market_value)
+        print(info)
     # 回测系统：
     # 就是输入每日可买入的股票（这些股票是经过模型筛选得到的），然后回测系统根据一些条件买入卖出等操作。
     def BackTest(self, buy_df, all_df, index_df, buy_price='close'):
@@ -284,8 +290,11 @@ class Account:
                     # print(tmp_df)
                     # print(tmp_df['close'])
 
+                    # // 是一个运算符，表示整数除法（也称为地板除法）。这意味着当你使用 // 进行除法运算时，结果会是一个整数，小数部分会被丢弃，并且结果总是向负无穷大方向舍入。
+                    # 两层的价格除以金额再转换成100股 => 1手
                     buy_num = (money / tmp_df[buy_price][j]) // 100
                     if buy_num == 0:
+                        # 如果买的手数是0
                         continue
                     buy_num = buy_num * 100
                     self.buy_stock(tmp_df['ts_code'][j], tmp_df['name'][j], day, tmp_df[buy_price][j], buy_num)
@@ -305,11 +314,11 @@ class Account:
                     self.sell_stock(day, stock_name, stock_id, sell_price, sell_num, sell_kind)
 
             # 更新持股周期及信息
-            # try:
+            try:
                 self.update(day, all_df)
-            # except Exception:
-            #     print('BackTest error', Exception)
-            #     pass
+            except Exception:
+                print('BackTest error', Exception)
+                pass
             # end = datetime.datetime.now()
             # print('running time:%s'%(end-start))
 
